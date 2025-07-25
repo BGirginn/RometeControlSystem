@@ -30,20 +30,38 @@ public class KeepAlivePayload
 
 public class ConnectionMetrics
 {
-    [JsonPropertyName("latency")]
+    [JsonPropertyName("latencyMs")]
     public double LatencyMs { get; set; }
 
-    [JsonPropertyName("bandwidth")]
+    [JsonPropertyName("bandwidthMbps")]
     public double BandwidthMbps { get; set; }
 
-    [JsonPropertyName("packetLoss")]
+    [JsonPropertyName("packetLossPercent")]
     public double PacketLossPercent { get; set; }
 
-    [JsonPropertyName("cpuUsage")]
+    [JsonPropertyName("cpuUsagePercent")]
     public double CpuUsagePercent { get; set; }
 
-    [JsonPropertyName("memoryUsage")]
+    [JsonPropertyName("memoryUsageMB")]
     public double MemoryUsageMB { get; set; }
+
+    [JsonPropertyName("framesSent")]
+    public long FramesSent { get; set; }
+
+    [JsonPropertyName("framesDropped")]
+    public long FramesDropped { get; set; }
+
+    [JsonPropertyName("averageFps")]
+    public double AverageFps { get; set; }
+
+    [JsonPropertyName("encodingTimeMs")]
+    public double EncodingTimeMs { get; set; }
+
+    [JsonPropertyName("networkJitterMs")]
+    public double NetworkJitterMs { get; set; }
+
+    [JsonPropertyName("bufferHealth")]
+    public double BufferHealth { get; set; }
 }
 
 /// <summary>

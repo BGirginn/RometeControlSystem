@@ -9,13 +9,16 @@ namespace RemoteControl.Protocol.Messages;
 [JsonDerivedType(typeof(RegisterAgentMessage), "RegisterAgent")]
 [JsonDerivedType(typeof(AgentRegisteredMessage), "AgentRegistered")]
 [JsonDerivedType(typeof(RequestSessionMessage), "RequestSession")]
+[JsonDerivedType(typeof(SessionRequestReceivedMessage), "SessionRequestReceived")]
 [JsonDerivedType(typeof(SessionDecisionMessage), "SessionDecision")]
+[JsonDerivedType(typeof(SessionStartedMessage), "SessionStarted")]
+[JsonDerivedType(typeof(SessionEndedMessage), "SessionEnded")]
 [JsonDerivedType(typeof(FrameMessage), "Frame")]
 [JsonDerivedType(typeof(InputEventMessage), "InputEvent")]
 [JsonDerivedType(typeof(KeepAliveMessage), "KeepAlive")]
 [JsonDerivedType(typeof(ErrorMessage), "Error")]
-[JsonDerivedType(typeof(SessionStartedMessage), "SessionStarted")]
-[JsonDerivedType(typeof(SessionEndedMessage), "SessionEnded")]
+[JsonDerivedType(typeof(SelectMonitorMessage), "SelectMonitor")]
+[JsonDerivedType(typeof(UpdateQualityMessage), "UpdateQuality")]
 public abstract class MessageBase
 {
     /// <summary>
@@ -34,5 +37,5 @@ public abstract class MessageBase
     /// Optional message ID for tracking
     /// </summary>
     [JsonPropertyName("messageId")]
-    public string? MessageId { get; set; }
+    public string? MessageId { get; set; } = Guid.NewGuid().ToString();
 } 

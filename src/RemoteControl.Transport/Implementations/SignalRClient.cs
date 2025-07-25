@@ -46,7 +46,7 @@ public class SignalRClient : ISignalRClient, IDisposable
                 {
                     if (!string.IsNullOrEmpty(accessToken))
                     {
-                        options.AccessTokenProvider = () => Task.FromResult(accessToken);
+                        options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken);
                     }
                 })
                 .WithAutomaticReconnect(new CustomRetryPolicy(_options.Reconnection))

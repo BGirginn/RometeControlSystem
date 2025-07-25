@@ -21,8 +21,10 @@ namespace RemoteControl.Services.Implementations
 
         public bool IsConnected => !string.IsNullOrEmpty(_registryServerUrl) && _httpClient != null;
 
+#pragma warning disable CS0067 // Event is never used
         public event EventHandler<Device>? DeviceOnline;
         public event EventHandler<Device>? DeviceOffline;
+#pragma warning restore CS0067
         public event EventHandler<string>? ConnectionStatusChanged;
 
         public RegistryClientService(ILogger<RegistryClientService> logger)

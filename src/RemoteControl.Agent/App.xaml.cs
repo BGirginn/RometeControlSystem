@@ -1,12 +1,14 @@
 ﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RemoteControl.Agent.Services;
-using RemoteControl.Services.Implementations;
-using RemoteControl.Services.Interfaces;
+using RemoteControl.Transport.Extensions;
+using Serilog;
 
 namespace RemoteControl.Agent;
 
@@ -21,16 +23,22 @@ public partial class App : Application
     {
         try
         {
-            // Build the host
+            // Build the host with Serilog and configuration
             _host = Host.CreateDefaultBuilder()
-                .ConfigureLogging(logging =>
+                .ConfigureAppConfiguration((context, config) =>
                 {
-                    logging.AddConsole();
-                    logging.AddDebug();
+                    config.SetBasePath(Directory.GetCurrentDirectory());
+                    config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                    config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true);
+                    config.AddEnvironmentVariables();
+                })
+                .UseSerilog((context, loggerConfiguration) =>
+                {
+                    loggerConfiguration.ReadFrom.Configuration(context.Configuration);
                 })
                 .ConfigureServices((context, services) =>
                 {
-                    ConfigureServices(services);
+                    ConfigureServices(services, context.Configuration);
                 })
                 .Build();
 
@@ -60,18 +68,17 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private void ConfigureServices(IServiceCollection services)
+    private void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // Register Core Services
-        services.AddSingleton<ITransportService, TcpTransportService>();
-        services.AddSingleton<IAgentService, LocalAgentService>();
-        services.AddSingleton<ISessionService, SessionService>();
-        services.AddSingleton<IScreenCaptureService, WindowsScreenCaptureService>();
-        services.AddSingleton<IInputSimulationService, WindowsInputSimulationService>();
-        services.AddSingleton<IUserSettingsService, FileUserSettingsService>();
-
-        // Register Agent Services
-        services.AddSingleton<AgentBackgroundService>();
+        // Configure options
+        services.Configure<AgentOptions>(configuration.GetSection("Agent"));
+        services.Configure<ControlServerOptions>(configuration.GetSection("ControlServer"));
+        
+        // Add transport services (SignalR client, JWT, etc.)
+        services.AddTransportServices(configuration);
+        
+        // Register modern Agent services
+        services.AddSingleton<ModernAgentService>();
         
         // Register Main Window
         services.AddSingleton<MainWindow>();

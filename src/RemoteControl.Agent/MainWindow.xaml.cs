@@ -9,9 +9,11 @@ using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RemoteControl.Agent.Services;
+using RemoteControl.Agent.Views;
 using RemoteControl.Core.Models;
-using RemoteControl.Services.Interfaces;
+using RemoteControl.Protocol.Messages;
 
 namespace RemoteControl.Agent;
 
@@ -22,19 +24,19 @@ public partial class MainWindow : Window
 {
     private readonly IHost _host;
     private readonly ILogger<MainWindow> _logger;
-    private readonly IAgentService _agentService;
-    private readonly AgentBackgroundService _backgroundService;
+    private readonly ModernAgentService _modernAgentService;
+    private readonly IOptions<AgentOptions> _agentOptions;
     private NotifyIcon? _notifyIcon;
-    private AgentInfo? _agentInfo;
     private bool _isClosing = false;
+    private bool _serviceRunning = false;
 
     public MainWindow(IHost host)
     {
         InitializeComponent();
         _host = host;
         _logger = _host.Services.GetRequiredService<ILogger<MainWindow>>();
-        _agentService = _host.Services.GetRequiredService<IAgentService>();
-        _backgroundService = _host.Services.GetRequiredService<AgentBackgroundService>();
+        _modernAgentService = _host.Services.GetRequiredService<ModernAgentService>();
+        _agentOptions = _host.Services.GetRequiredService<IOptions<AgentOptions>>();
         
         InitializeAsync();
         SetupSystemTray();
@@ -47,24 +49,29 @@ public partial class MainWindow : Window
             StatusText.Text = "Initializing...";
             StatusText.Foreground = System.Windows.Media.Brushes.Orange;
             
-            // Get agent information
-            _agentInfo = await _agentService.GetLocalAgentInfoAsync();
-            
             // Update UI with agent info
-            AgentIdText.Text = _agentInfo.AgentId;
-            ComputerNameText.Text = _agentInfo.ComputerName;
-            UserNameText.Text = _agentInfo.UserName;
-            IPAddressText.Text = _agentInfo.IPAddress;
-            ScreenResolutionText.Text = $"{_agentInfo.ScreenWidth} x {_agentInfo.ScreenHeight}";
+            AgentIdText.Text = "Connecting...";
+            ComputerNameText.Text = Environment.MachineName;
+            UserNameText.Text = Environment.UserName;
+            IPAddressText.Text = GetLocalIPAddress();
+            ScreenResolutionText.Text = $"{(int)SystemParameters.PrimaryScreenWidth} x {(int)SystemParameters.PrimaryScreenHeight}";
             
             // Subscribe to events
-            _backgroundService.ActivityLogged += OnActivityLogged;
+            _modernAgentService.ActivityLogged += OnActivityLogged;
+            _modernAgentService.SessionRequested += OnSessionRequested;
+            _modernAgentService.ConnectionStateChanged += OnConnectionStateChanged;
             
             StatusText.Text = "Ready - Service stopped";
             StatusText.Foreground = System.Windows.Media.Brushes.Red;
             
             AddActivityLog("Agent initialized successfully");
             _logger.LogInformation("Agent MainWindow initialized");
+            
+            // Auto-start service if configured
+            if (_agentOptions.Value.AutoStartService)
+            {
+                await StartService();
+            }
         }
         catch (Exception ex)
         {
@@ -86,8 +93,8 @@ public partial class MainWindow : Window
 
         var contextMenu = new ContextMenuStrip();
         contextMenu.Items.Add("Show", null, (s, e) => ShowWindow());
-        contextMenu.Items.Add("Start Service", null, (s, e) => StartService());
-        contextMenu.Items.Add("Stop Service", null, (s, e) => StopService());
+        contextMenu.Items.Add("Start Service", null, async (s, e) => await StartService());
+        contextMenu.Items.Add("Stop Service", null, async (s, e) => await StopService());
         contextMenu.Items.Add("-");
         contextMenu.Items.Add("Exit", null, (s, e) => ExitApplication());
 
@@ -109,19 +116,17 @@ public partial class MainWindow : Window
     {
         try
         {
+            if (_serviceRunning) return;
+            
             StatusText.Text = "Starting service...";
             StatusText.Foreground = System.Windows.Media.Brushes.Orange;
             
             StartServiceButton.IsEnabled = false;
             
-            var port = int.Parse(ListenPortText.Text);
-            var maxConnections = int.Parse(MaxConnectionsText.Text);
-            var frameRate = (int)FrameRateSlider.Value;
-            var imageQuality = (int)ImageQualitySlider.Value;
+            await _modernAgentService.StartAsync(CancellationToken.None);
+            _serviceRunning = true;
             
-            await _backgroundService.StartAsync(CancellationToken.None);
-            
-            AddActivityLog($"Service started on port {port}");
+            AddActivityLog("Modern Agent service started");
         }
         catch (Exception ex)
         {
@@ -137,12 +142,15 @@ public partial class MainWindow : Window
     {
         try
         {
+            if (!_serviceRunning) return;
+            
             StatusText.Text = "Stopping service...";
             StatusText.Foreground = System.Windows.Media.Brushes.Orange;
             
             StopServiceButton.IsEnabled = false;
             
-            await _backgroundService.StopAsync(CancellationToken.None);
+            await _modernAgentService.StopAsync(CancellationToken.None);
+            _serviceRunning = false;
             
             AddActivityLog("Service stopped");
         }
@@ -155,10 +163,14 @@ public partial class MainWindow : Window
 
     private void CopyAgentIdButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_agentInfo != null)
+        if (!string.IsNullOrEmpty(_modernAgentService.AgentId))
         {
-            System.Windows.Clipboard.SetText(_agentInfo.AgentId);
+            System.Windows.Clipboard.SetText(_modernAgentService.AgentId);
             AddActivityLog("Agent ID copied to clipboard");
+        }
+        else
+        {
+            AddActivityLog("Agent ID not available - service not connected");
         }
     }
 
@@ -205,7 +217,10 @@ public partial class MainWindow : Window
         {
             try
             {
-                await _backgroundService.StopAsync(CancellationToken.None);
+                if (_serviceRunning)
+                {
+                    await _modernAgentService.StopAsync(CancellationToken.None);
+                }
                 await _host.StopAsync();
             }
             catch (Exception ex)
@@ -265,6 +280,91 @@ public partial class MainWindow : Window
         {
             AddActivityLog(activity);
         });
+    }
+
+    private async void OnSessionRequested(object? sender, RequestSessionMessage sessionRequest)
+    {
+        try
+        {
+            // Show approval dialog on UI thread
+            bool? approved = null;
+            string? reason = null;
+            
+            await Dispatcher.InvokeAsync(() =>
+            {
+                var dialog = new SessionApprovalDialog(sessionRequest);
+                var result = dialog.ShowDialog();
+                
+                approved = dialog.UserResponse;
+                reason = dialog.DenyReason;
+            });
+            
+            // Respond to the session request
+            if (approved.HasValue)
+            {
+                await _modernAgentService.RespondToSessionRequestAsync(
+                    sessionRequest.MessageId ?? Guid.NewGuid().ToString(), 
+                    approved.Value, 
+                    reason);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling session request");
+            AddActivityLog($"Error handling session request: {ex.Message}");
+        }
+    }
+
+    private void OnConnectionStateChanged(object? sender, bool isConnected)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (isConnected)
+            {
+                StatusText.Text = "Connected to ControlServer";
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                
+                AgentIdText.Text = _modernAgentService.AgentId ?? "Connected (ID pending)";
+                
+                StartServiceButton.IsEnabled = false;
+                StopServiceButton.IsEnabled = true;
+                
+                ConnectionStatusText.Text = "Connected and ready for sessions";
+            }
+            else
+            {
+                StatusText.Text = _serviceRunning ? "Connecting..." : "Disconnected";
+                StatusText.Foreground = _serviceRunning ? System.Windows.Media.Brushes.Orange : System.Windows.Media.Brushes.Red;
+                
+                if (!_serviceRunning)
+                {
+                    AgentIdText.Text = "Not connected";
+                    StartServiceButton.IsEnabled = true;
+                    StopServiceButton.IsEnabled = false;
+                    ConnectionStatusText.Text = "Not connected";
+                }
+            }
+        });
+    }
+
+    private string GetLocalIPAddress()
+    {
+        try
+        {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
+            {
+                if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                {
+                    return ip.ToString();
+                }
+            }
+            return "127.0.0.1";
+        }
+        catch
+        {
+            return "Unknown";
+        }
     }
 
     private void AddActivityLog(string message)

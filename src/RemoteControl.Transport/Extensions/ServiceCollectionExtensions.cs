@@ -18,7 +18,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddTransportServices(this IServiceCollection services, IConfiguration configuration)
     {
         // Configure options
-        services.Configure<TransportOptions>(configuration.GetSection(TransportOptions.SectionName));
+        services.Configure<TransportOptions>(options =>
+        {
+            configuration.GetSection(TransportOptions.SectionName).Bind(options);
+        });
 
         // Register services
         services.AddSingleton<IJwtService, JwtService>();

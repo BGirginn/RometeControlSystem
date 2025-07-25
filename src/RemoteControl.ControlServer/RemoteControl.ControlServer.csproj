@@ -9,8 +9,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.0.3" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.0.3" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.2" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="5.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
@@ -20,7 +20,6 @@
     <ProjectReference Include="..\RemoteControl.Core\RemoteControl.Core.csproj" />
     <ProjectReference Include="..\RemoteControl.Protocol\RemoteControl.Protocol.csproj" />
     <ProjectReference Include="..\RemoteControl.Transport\RemoteControl.Transport.csproj" />
-    <ProjectReference Include="..\RemoteControl.Services\RemoteControl.Services.csproj" />
   </ItemGroup>
 
 </Project> 

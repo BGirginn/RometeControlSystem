@@ -66,7 +66,7 @@ namespace RemoteControl.Viewer.ViewModels
         }
 
         [RelayCommand(CanExecute = nameof(CanConnect))]
-        private async Task Connect()
+        private async Task ConnectAsync()
         {
             try
             {
@@ -117,7 +117,7 @@ namespace RemoteControl.Viewer.ViewModels
         private void ConnectToRecent(RecentConnection connection)
         {
             TargetId = connection.TargetId;
-            Connect();
+            _ = ConnectAsync();
         }
 
         [RelayCommand]

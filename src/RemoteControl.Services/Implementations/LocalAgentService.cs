@@ -57,8 +57,8 @@ namespace RemoteControl.Services.Implementations
                 };
             }, cancellationToken);
 
-            _logger.LogInformation("Local agent info created: {AgentId} on {ComputerName}", _localAgent.AgentId, _localAgent.ComputerName);
-            return _localAgent;
+            _logger.LogInformation("Local agent info created: {AgentId} on {ComputerName}", _localAgent?.AgentId, _localAgent?.ComputerName);
+            return _localAgent!; // _localAgent is never null here
         }
 
         public async Task<AgentInfo?> GetAgentInfoAsync(string agentId, CancellationToken cancellationToken = default)
@@ -194,6 +194,8 @@ namespace RemoteControl.Services.Implementations
             try
             {
                 var screen = Screen.PrimaryScreen;
+                if (screen == null)
+                    return (1920, 1080); // Default resolution
                 return (screen.Bounds.Width, screen.Bounds.Height);
             }
             catch

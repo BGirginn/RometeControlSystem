@@ -83,8 +83,6 @@ public class AuthService : IAuthService
                 Message = $"Registration failed: {ex.Message}"
             };
         }
-
-        await Task.CompletedTask;
     }
 
     public async Task<AuthResult> LoginAsync(string username, string password)
@@ -146,8 +144,6 @@ public class AuthService : IAuthService
                 Message = $"Login failed: {ex.Message}"
             };
         }
-
-        await Task.CompletedTask;
     }
 
     public async Task<AuthResult> ValidateTokenAsync(string token)
@@ -209,8 +205,6 @@ public class AuthService : IAuthService
                 Message = $"Token validation failed: {ex.Message}"
             };
         }
-
-        await Task.CompletedTask;
     }
 
     public async Task<UserInfo?> GetUserAsync(string userId)

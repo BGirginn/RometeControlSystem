@@ -92,11 +92,11 @@ namespace RemoteControl.Viewer
             if (value is bool enabled)
             {
                 if (enabled)
-                    return Application.Current.FindResource("SuccessBrush") as Brush;
+                    return Application.Current.FindResource("SuccessBrush") as Brush ?? Brushes.Green;
                 else
-                    return Application.Current.FindResource("ErrorBrush") as Brush;
+                    return Application.Current.FindResource("ErrorBrush") as Brush ?? Brushes.Red;
             }
-            return Application.Current.FindResource("PrimaryBrush") as Brush;
+            return Application.Current.FindResource("PrimaryBrush") as Brush ?? Brushes.Blue;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

@@ -164,4 +164,109 @@ public class SessionStatistics
 
     [JsonPropertyName("averageLatency")]
     public double AverageLatency { get; set; }
+}
+
+/// <summary>
+/// Message forwarded to agent when a session request is received
+/// </summary>
+public class SessionRequestReceivedMessage : MessageBase
+{
+    public override string Type => "SessionRequestReceived";
+
+    [JsonPropertyName("payload")]
+    public SessionRequestReceivedPayload Payload { get; set; } = new();
+}
+
+public class SessionRequestReceivedPayload
+{
+    [JsonPropertyName("sessionId")]
+    public string SessionId { get; set; } = string.Empty;
+
+    [JsonPropertyName("viewerUsername")]
+    public string ViewerUsername { get; set; } = string.Empty;
+
+    [JsonPropertyName("viewerDisplayName")]
+    public string ViewerDisplayName { get; set; } = string.Empty;
+
+    [JsonPropertyName("viewerMachineName")]
+    public string ViewerMachineName { get; set; } = string.Empty;
+
+    [JsonPropertyName("requestTime")]
+    public DateTime RequestTime { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("requestReason")]
+    public string? RequestReason { get; set; }
+
+    [JsonPropertyName("autoAcceptTimeout")]
+    public int AutoAcceptTimeout { get; set; } = 30000;
+
+    [JsonPropertyName("viewerCapabilities")]
+    public ViewerCapabilities ViewerCapabilities { get; set; } = new();
+}
+
+/// <summary>
+/// Message to select a specific monitor for screen capture
+/// </summary>
+public class SelectMonitorMessage : MessageBase
+{
+    public override string Type => "SelectMonitor";
+
+    [JsonPropertyName("payload")]
+    public SelectMonitorPayload Payload { get; set; } = new();
+}
+
+public class SelectMonitorPayload
+{
+    [JsonPropertyName("sessionId")]
+    public string SessionId { get; set; } = string.Empty;
+
+    [JsonPropertyName("monitorIndex")]
+    public int MonitorIndex { get; set; } = 0;
+
+    [JsonPropertyName("bounds")]
+    public MonitorBounds Bounds { get; set; } = new();
+}
+
+public class MonitorBounds
+{
+    [JsonPropertyName("left")]
+    public int Left { get; set; }
+
+    [JsonPropertyName("top")]
+    public int Top { get; set; }
+
+    [JsonPropertyName("width")]
+    public int Width { get; set; }
+
+    [JsonPropertyName("height")]
+    public int Height { get; set; }
+}
+
+/// <summary>
+/// Message to update streaming quality settings during a session
+/// </summary>
+public class UpdateQualityMessage : MessageBase
+{
+    public override string Type => "UpdateQuality";
+
+    [JsonPropertyName("payload")]
+    public UpdateQualityPayload Payload { get; set; } = new();
+}
+
+public class UpdateQualityPayload
+{
+    [JsonPropertyName("sessionId")]
+    public string SessionId { get; set; } = string.Empty;
+
+    [JsonPropertyName("frameRate")]
+    public int FrameRate { get; set; } = 30;
+
+    [JsonPropertyName("quality")]
+    public int Quality { get; set; } = 80;
+
+    [JsonPropertyName("adaptive")]
+    public bool Adaptive { get; set; } = true;
+
+    [JsonPropertyName("encoding")]
+    public string? Encoding { get; set; }
 } 

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using RemoteControl.Protocol.Messages;
 
 namespace RemoteControl.ControlServer.Services;
 

@@ -24,8 +24,8 @@ public class InputEventPayload
 
 public class InputEvent
 {
-    [JsonPropertyName("kind")]
-    public string Kind { get; set; } = string.Empty;
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = string.Empty;
 
     [JsonPropertyName("x")]
     public int X { get; set; }
@@ -36,8 +36,14 @@ public class InputEvent
     [JsonPropertyName("button")]
     public string? Button { get; set; }
 
-    [JsonPropertyName("vk")]
+    [JsonPropertyName("virtualKey")]
     public int VirtualKey { get; set; }
+
+    [JsonPropertyName("scanCode")]
+    public int ScanCode { get; set; }
+
+    [JsonPropertyName("flags")]
+    public int Flags { get; set; }
 
     [JsonPropertyName("text")]
     public string? Text { get; set; }
@@ -49,21 +55,37 @@ public class InputEvent
     public string[] Modifiers { get; set; } = Array.Empty<string>();
 
     [JsonPropertyName("timestamp")]
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public long Timestamp { get; set; }
+
+    /// <summary>
+    /// For extended Win32 API support
+    /// </summary>
+    [JsonPropertyName("unicode")]
+    public char? Unicode { get; set; }
+
+    [JsonPropertyName("isExtended")]
+    public bool IsExtended { get; set; }
+
+    [JsonPropertyName("isSystemKey")]
+    public bool IsSystemKey { get; set; }
 }
 
 /// <summary>
-/// Input event kinds
+/// Input event types matching Win32 API constants
 /// </summary>
-public static class InputEventKind
+public static class InputEventType
 {
     public const string MouseMove = "MouseMove";
     public const string MouseDown = "MouseDown";
     public const string MouseUp = "MouseUp";
     public const string MouseWheel = "MouseWheel";
+    public const string MouseHWheel = "MouseHWheel";
     public const string KeyDown = "KeyDown";
     public const string KeyUp = "KeyUp";
-    public const string TextInput = "TextInput";
+    public const string SysKeyDown = "SysKeyDown";
+    public const string SysKeyUp = "SysKeyUp";
+    public const string Char = "Char";
+    public const string UniChar = "UniChar";
 }
 
 /// <summary>
@@ -87,4 +109,10 @@ public static class KeyModifier
     public const string Alt = "Alt";
     public const string Shift = "Shift";
     public const string Windows = "Windows";
+    public const string LeftCtrl = "LeftCtrl";
+    public const string RightCtrl = "RightCtrl";
+    public const string LeftAlt = "LeftAlt";
+    public const string RightAlt = "RightAlt";
+    public const string LeftShift = "LeftShift";
+    public const string RightShift = "RightShift";
 } 

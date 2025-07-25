@@ -48,7 +48,7 @@ namespace RemoteControl.Services.Implementations
             return StartAsync(Port, cancellationToken);
         }
 
-        public async Task StartAsync(int port, CancellationToken cancellationToken = default)
+        public Task StartAsync(int port, CancellationToken cancellationToken = default)
         {
             if (_isRunning)
                 throw new InvalidOperationException("Server is already running");
@@ -73,6 +73,8 @@ namespace RemoteControl.Services.Implementations
                 StatusChanged?.Invoke(this, $"Failed to start server: {ex.Message}");
                 throw;
             }
+            
+            return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -243,7 +245,7 @@ namespace RemoteControl.Services.Implementations
         {
             try
             {
-                await _screenCaptureService.StartContinuousCaptureAsync(frame =>
+                await _screenCaptureService.StartContinuousCaptureAsync(frameData =>
                 {
                     _ = Task.Run(async () =>
                     {
@@ -251,13 +253,13 @@ namespace RemoteControl.Services.Implementations
                         {
                             if (stream.CanWrite && !cancellationToken.IsCancellationRequested)
                             {
-                                var header = BitConverter.GetBytes(frame.ImageData.Length);
+                                var header = BitConverter.GetBytes(frameData.Length);
                                 await stream.WriteAsync(header, cancellationToken);
-                                await stream.WriteAsync(frame.ImageData, cancellationToken);
+                                await stream.WriteAsync(frameData, cancellationToken);
                                 await stream.FlushAsync(cancellationToken);
 
                                 // Update session metrics
-                                await _sessionService.UpdateSessionMetricsAsync(sessionId, frame.ImageData.Length, 1);
+                                await _sessionService.UpdateSessionMetricsAsync(sessionId, frameData.Length, 1);
                             }
                         }
                         catch (Exception ex)

@@ -100,7 +100,8 @@ public class RemoteControlHub : Hub
     {
         try
         {
-            if (!MessageSerializer.TryDeserialize<RegisterAgentMessage>(messageJson, out var message) || message == null)
+            var message = MessageSerializer.Deserialize<RegisterAgentMessage>(messageJson);
+            if (message == null)
             {
                 _logger.LogWarning("Invalid RegisterAgent message from {ConnectionId}", Context.ConnectionId);
                 return;
@@ -154,7 +155,8 @@ public class RemoteControlHub : Hub
     {
         try
         {
-            if (!MessageSerializer.TryDeserialize<RequestSessionMessage>(messageJson, out var message) || message == null)
+            var message = MessageSerializer.Deserialize<RequestSessionMessage>(messageJson);
+            if (message == null)
             {
                 _logger.LogWarning("Invalid RequestSession message from {ConnectionId}", Context.ConnectionId);
                 return;
@@ -208,7 +210,8 @@ public class RemoteControlHub : Hub
     {
         try
         {
-            if (!MessageSerializer.TryDeserialize<SessionDecisionMessage>(messageJson, out var message) || message == null)
+            var message = MessageSerializer.Deserialize<SessionDecisionMessage>(messageJson);
+            if (message == null)
             {
                 _logger.LogWarning("Invalid SessionDecision message from {ConnectionId}", Context.ConnectionId);
                 return;
