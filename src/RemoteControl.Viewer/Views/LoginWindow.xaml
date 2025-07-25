@@ -1,0 +1,114 @@
+<Window x:Class="RemoteControl.Viewer.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Remote Control - Login" Height="500" Width="450"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Remote Control System" 
+                      FontSize="24" FontWeight="Bold" 
+                      HorizontalAlignment="Center"/>
+            <TextBlock Text="Connect to computers anywhere in the world" 
+                      FontSize="14" Foreground="Gray" 
+                      HorizontalAlignment="Center" Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <!-- Login Form -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Registry Server -->
+                <GroupBox Header="Registry Server" Margin="0,0,0,15">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Server URL:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="ServerUrlTextBox" 
+                                Text="https://registry.remotecontrol.com"
+                                Margin="0,0,0,10"/>
+                        <Button x:Name="ConnectToServerButton" 
+                               Content="Connect to Server" 
+                               Click="ConnectToServerButton_Click"
+                               IsEnabled="{Binding CanConnect}"/>
+                        <TextBlock x:Name="ServerStatusText" 
+                                  Text="Not connected" 
+                                  Foreground="Red" 
+                                  Margin="0,5,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Login -->
+                <GroupBox Header="Login" Margin="0,0,0,15">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Username:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="UsernameTextBox" Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="Password:" Margin="0,0,0,5"/>
+                        <PasswordBox x:Name="PasswordBox" Margin="0,0,0,15"/>
+                        
+                        <Button x:Name="LoginButton" 
+                               Content="Login" 
+                               Click="LoginButton_Click"
+                               IsEnabled="{Binding CanLogin}"
+                               Margin="0,0,0,10"/>
+                        
+                        <Button x:Name="RegisterButton" 
+                               Content="Create New Account" 
+                               Click="RegisterButton_Click"
+                               IsEnabled="{Binding CanLogin}"
+                               Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Device Registration (for new users) -->
+                <GroupBox x:Name="DeviceRegistrationGroup" 
+                         Header="Register This Computer" 
+                         Margin="0,0,0,15"
+                         Visibility="Collapsed">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Computer Name:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="DeviceNameTextBox" 
+                                Text="{Binding ComputerName}" 
+                                Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="Your Device ID:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="DeviceIdTextBox" 
+                                IsReadOnly="True" 
+                                Background="LightGray"
+                                Text="{Binding DeviceId}"
+                                Margin="0,0,0,10"/>
+                        
+                        <TextBlock Text="Share this Device ID with others to allow them to connect to your computer."
+                                  TextWrapping="Wrap" 
+                                  FontSize="12" 
+                                  Foreground="Gray" 
+                                  Margin="0,0,0,10"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Status -->
+                <TextBlock x:Name="StatusText" 
+                          Text="Enter server URL and click Connect" 
+                          TextWrapping="Wrap" 
+                          Margin="0,10,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" 
+                   HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button x:Name="CancelButton" Content="Cancel" 
+                   Width="80" Margin="0,0,10,0" 
+                   Click="CancelButton_Click"/>
+            <Button x:Name="OkButton" Content="Continue" 
+                   Width="80" IsDefault="True" 
+                   Click="OkButton_Click"
+                   IsEnabled="{Binding IsLoggedIn}"/>
+        </StackPanel>
+    </Grid>
+</Window>

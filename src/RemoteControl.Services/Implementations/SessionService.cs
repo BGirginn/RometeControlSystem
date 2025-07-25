@@ -82,6 +82,20 @@ namespace RemoteControl.Services.Implementations
             }
         }
 
+        public async Task UpdateSessionMetricsAsync(string sessionId, long bytesTransferred, long framesTransferred, CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+
+            if (_sessions.TryGetValue(sessionId, out var session))
+            {
+                session.LastActivity = DateTime.UtcNow;
+                // Here you could update metrics like bytes transferred, frame count, etc.
+                // For now, we'll just update the last activity time
+                _logger.LogTrace("Session metrics updated: {SessionId}, Bytes: {Bytes}, Frames: {Frames}", 
+                    sessionId, bytesTransferred, framesTransferred);
+            }
+        }
+
         public async Task EndSessionAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;

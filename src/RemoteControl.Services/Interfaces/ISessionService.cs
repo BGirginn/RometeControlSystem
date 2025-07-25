@@ -12,6 +12,7 @@ namespace RemoteControl.Services.Interfaces
         Task<SessionInfo?> GetSessionAsync(string sessionId, CancellationToken cancellationToken = default);
         Task<IEnumerable<SessionInfo>> GetActiveSessionsAsync(CancellationToken cancellationToken = default);
         Task UpdateSessionStatusAsync(string sessionId, SessionStatus status, CancellationToken cancellationToken = default);
+        Task UpdateSessionMetricsAsync(string sessionId, long bytesTransferred, long framesTransferred, CancellationToken cancellationToken = default);
         Task EndSessionAsync(string sessionId, CancellationToken cancellationToken = default);
         
         event EventHandler<SessionInfo>? SessionCreated;

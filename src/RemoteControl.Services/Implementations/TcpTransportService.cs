@@ -1,33 +1,34 @@
 using System;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RemoteControl.Core.Enums;
 using RemoteControl.Core.Events;
 using RemoteControl.Core.Models;
 using RemoteControl.Services.Interfaces;
 
 namespace RemoteControl.Services.Implementations
 {
-    /// <summary>
-    /// Real TCP-based transport service implementation
-    /// </summary>
     public class TcpTransportService : ITransportService, IDisposable
     {
         private readonly ILogger<TcpTransportService> _logger;
+        private readonly IRegistryClientService? _registryClient;
         private TcpClient? _tcpClient;
         private NetworkStream? _networkStream;
         private CancellationTokenSource? _receiveCancellation;
-        private Core.Enums.ConnectionState _currentState = Core.Enums.ConnectionState.Disconnected;
+        private ConnectionState _currentState = ConnectionState.Disconnected;
 
         public event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
         public event EventHandler<byte[]>? FrameDataReceived;
 
-        public TcpTransportService(ILogger<TcpTransportService> logger)
+        public TcpTransportService(ILogger<TcpTransportService> logger, IRegistryClientService? registryClient = null)
         {
             _logger = logger;
+            _registryClient = registryClient;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -48,17 +49,17 @@ namespace RemoteControl.Services.Implementations
             {
                 _logger.LogInformation("Starting connection to {TargetId}", request.TargetId);
                 
-                ChangeState(Core.Enums.ConnectionState.Resolving, "Resolving target ID...");
+                ChangeState(ConnectionState.Resolving, "Resolving target ID...");
                 
-                // Parse target ID to get host and port
-                var (host, port) = ParseTargetId(request.TargetId);
+                // Parse target ID to get host and port (now supports device IDs)
+                var (host, port) = await ParseTargetIdAsync(request.TargetId, cancellationToken);
                 await Task.Delay(500, cancellationToken); // Brief delay for user feedback
                 
-                ChangeState(Core.Enums.ConnectionState.Connecting, "Establishing TCP connection...");
+                ChangeState(ConnectionState.Connecting, "Establishing TCP connection...");
                 
                 _tcpClient = new TcpClient();
                 // Set timeout for connection
-                var connectTask = _tcpClient.ConnectAsync(host, port, cancellationToken);
+                var connectTask = _tcpClient.ConnectAsync(host, port, cancellationToken).AsTask();
                 var timeoutTask = Task.Delay(10000, cancellationToken); // 10 second timeout
                 
                 var completedTask = await Task.WhenAny(connectTask, timeoutTask);
@@ -70,7 +71,7 @@ namespace RemoteControl.Services.Implementations
                 await connectTask; // Re-await to get any exceptions
                 _networkStream = _tcpClient.GetStream();
                 
-                ChangeState(Core.Enums.ConnectionState.Authenticating, "Authenticating...");
+                ChangeState(ConnectionState.Authenticating, "Authenticating...");
                 
                 // Send authentication request
                 await SendAuthenticationAsync(request, cancellationToken);
@@ -82,52 +83,19 @@ namespace RemoteControl.Services.Implementations
                     throw new UnauthorizedAccessException(authResponse.Message ?? "Authentication failed");
                 }
                 
-                ChangeState(Core.Enums.ConnectionState.Connected, "Connected successfully");
+                ChangeState(ConnectionState.Connected, "Connected successfully");
                 
                 // Start receiving data
-                _ = Task.Run(() => ReceiveDataLoop(cancellationToken), cancellationToken);
+                _receiveCancellation = new CancellationTokenSource();
+                _ = Task.Run(() => ReceiveFrameLoop(_receiveCancellation.Token), _receiveCancellation.Token);
                 
                 _logger.LogInformation("Successfully connected to {TargetId}", request.TargetId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to connect to {TargetId}", request.TargetId);
-                ChangeState(Core.Enums.ConnectionState.Disconnected, $"Connection failed: {ex.Message}");
+                ChangeState(ConnectionState.Disconnected, $"Connection failed: {ex.Message}");
                 await DisconnectAsync(cancellationToken);
-                throw;
-            }
-        }
-                
-                ChangeState(Core.Enums.ConnectionState.Authenticating, "Authenticating...");
-                
-                // Send authentication request
-                var authJson = JsonSerializer.Serialize(request);
-                var authData = Encoding.UTF8.GetBytes(authJson);
-                await _networkStream.WriteAsync(authData, cancellationToken);
-                
-                // Wait for auth response
-                var buffer = new byte[1024];
-                var bytesRead = await _networkStream.ReadAsync(buffer, cancellationToken);
-                var response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                
-                if (response != "AUTH_OK")
-                {
-                    throw new InvalidOperationException($"Authentication failed: {response}");
-                }
-                
-                ChangeState(Core.Enums.ConnectionState.Connected, "Connected successfully");
-                ChangeState(Core.Enums.ConnectionState.Streaming, "Streaming started");
-                
-                // Start receiving frames
-                _receiveCancellation = new CancellationTokenSource();
-                _ = Task.Run(() => ReceiveFrameLoop(_receiveCancellation.Token), _receiveCancellation.Token);
-                
-                _logger.LogInformation("Connection established successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Connection failed");
-                ChangeState(Core.Enums.ConnectionState.Error, $"Connection failed: {ex.Message}", ex);
                 throw;
             }
         }
@@ -136,16 +104,16 @@ namespace RemoteControl.Services.Implementations
         {
             try
             {
-                if (_currentState != Core.Enums.ConnectionState.Disconnected)
+                if (_tcpClient?.Connected == true || _networkStream != null)
                 {
-                    ChangeState(Core.Enums.ConnectionState.Disconnecting, "Disconnecting...");
+                    ChangeState(ConnectionState.Disconnecting, "Disconnecting...");
                     
                     _receiveCancellation?.Cancel();
                     
                     _networkStream?.Close();
                     _tcpClient?.Close();
                     
-                    ChangeState(Core.Enums.ConnectionState.Disconnected, "Disconnected");
+                    ChangeState(ConnectionState.Disconnected, "Disconnected");
                     
                     _logger.LogInformation("Disconnected successfully");
                 }
@@ -153,35 +121,180 @@ namespace RemoteControl.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during disconnect");
-                ChangeState(Core.Enums.ConnectionState.Error, $"Disconnect error: {ex.Message}", ex);
+                ChangeState(ConnectionState.Error, $"Disconnect error: {ex.Message}", ex);
             }
+            finally
+            {
+                _networkStream?.Dispose();
+                _tcpClient?.Dispose();
+                _networkStream = null;
+                _tcpClient = null;
+            }
+
+            await Task.CompletedTask;
         }
 
         public Task<bool> IsConnectedAsync()
         {
-            return Task.FromResult(_currentState == Core.Enums.ConnectionState.Connected || 
-                                  _currentState == Core.Enums.ConnectionState.Streaming);
+            var isConnected = _tcpClient?.Connected == true && _networkStream?.CanRead == true;
+            return Task.FromResult(isConnected);
         }
 
-        private (string host, int port) ResolveTarget(string targetId)
+        private async Task<(string Host, int Port)> ParseTargetIdAsync(string targetId, CancellationToken cancellationToken)
         {
-            // TODO: Implement actual target resolution (could be via discovery service, DNS, etc.)
-            // For now, assume targetId is in format "host:port" or use default port
-            if (targetId.Contains(':'))
-            {
-                var parts = targetId.Split(':');
-                return (parts[0], int.Parse(parts[1]));
-            }
+            // Support formats: 
+            // 1. "hostname:port" or "ip:port" - Direct connection
+            // 2. "RC-123456" - Device ID from registry
+            // 3. "username@devicename" - User device format
+            // 4. Just "hostname" or "devicename" - defaults to port 7777
             
-            return (targetId, 5900); // Default VNC-like port
+            if (string.IsNullOrWhiteSpace(targetId))
+                throw new ArgumentException("Target ID cannot be empty", nameof(targetId));
+
+            // Check if it's a direct IP:port format
+            if (targetId.Contains(':') && !targetId.Contains('@'))
+            {
+                return ParseDirectConnection(targetId);
+            }
+
+            // Check if it's a systematic device ID (RC-XXXXXX format)
+            if (targetId.StartsWith("RC-", StringComparison.OrdinalIgnoreCase) || targetId.Contains('@'))
+            {
+                return await ResolveDeviceAsync(targetId, cancellationToken);
+            }
+
+            // Assume it's a hostname/IP without port, use default port
+            return (targetId, 7777);
+        }
+
+        private static (string Host, int Port) ParseDirectConnection(string targetId)
+        {
+            var parts = targetId.Split(':');
+            if (parts.Length != 2)
+                throw new ArgumentException($"Invalid target ID format: {targetId}. Expected format: 'host:port'", nameof(targetId));
+
+            if (!int.TryParse(parts[1], out var port) || port <= 0 || port > 65535)
+                throw new ArgumentException($"Invalid port number: {parts[1]}", nameof(targetId));
+
+            return (parts[0], port);
+        }
+
+        private async Task<(string Host, int Port)> ResolveDeviceAsync(string deviceId, CancellationToken cancellationToken)
+        {
+            if (_registryClient == null || !_registryClient.IsConnected)
+            {
+                throw new InvalidOperationException($"Cannot resolve device ID '{deviceId}' - not connected to registry service. Use direct IP:port format instead.");
+            }
+
+            try
+            {
+                var device = await _registryClient.ResolveDeviceAsync(deviceId, cancellationToken);
+                if (device == null)
+                {
+                    throw new ArgumentException($"Device '{deviceId}' not found in registry");
+                }
+
+                if (!device.IsOnline)
+                {
+                    throw new InvalidOperationException($"Device '{deviceId}' is currently offline");
+                }
+
+                if (string.IsNullOrEmpty(device.CurrentIP))
+                {
+                    throw new InvalidOperationException($"Device '{deviceId}' has no current IP address");
+                }
+
+                _logger.LogInformation("Resolved device '{DeviceId}' to {IP}:{Port}", deviceId, device.CurrentIP, device.Port);
+                return (device.CurrentIP, device.Port);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resolve device ID: {DeviceId}", deviceId);
+                throw new ArgumentException($"Failed to resolve device '{deviceId}': {ex.Message}", nameof(deviceId));
+            }
+        }
+
+        private async Task SendAuthenticationAsync(ConnectionRequest request, CancellationToken cancellationToken)
+        {
+            if (_networkStream == null)
+                throw new InvalidOperationException("Not connected");
+
+            var authData = new
+            {
+                Type = "AUTH_REQUEST",
+                TargetId = request.TargetId,
+                Token = request.UserToken,
+                ViewerInfo = new
+                {
+                    Version = "1.0.0",
+                    Capabilities = new[] { "SCREEN_VIEW", "INPUT_CONTROL" }
+                }
+            };
+
+            var json = JsonSerializer.Serialize(authData);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            var header = BitConverter.GetBytes(bytes.Length);
+
+            await _networkStream.WriteAsync(header, cancellationToken);
+            await _networkStream.WriteAsync(bytes, cancellationToken);
+            await _networkStream.FlushAsync(cancellationToken);
+        }
+
+        private async Task<(bool Success, string? Message)> ReceiveAuthenticationResponseAsync(CancellationToken cancellationToken)
+        {
+            if (_networkStream == null)
+                throw new InvalidOperationException("Not connected");
+
+            try
+            {
+                // Read response header (4 bytes for length)
+                var headerBuffer = new byte[4];
+                var bytesRead = 0;
+                while (bytesRead < 4)
+                {
+                    var read = await _networkStream.ReadAsync(headerBuffer.AsMemory(bytesRead, 4 - bytesRead), cancellationToken);
+                    if (read == 0) throw new EndOfStreamException("Connection closed during authentication");
+                    bytesRead += read;
+                }
+
+                var responseLength = BitConverter.ToInt32(headerBuffer, 0);
+                if (responseLength <= 0 || responseLength > 1024 * 1024) // Max 1MB response
+                    throw new InvalidDataException($"Invalid response length: {responseLength}");
+
+                // Read response data
+                var responseBuffer = new byte[responseLength];
+                bytesRead = 0;
+                while (bytesRead < responseLength)
+                {
+                    var read = await _networkStream.ReadAsync(responseBuffer.AsMemory(bytesRead, responseLength - bytesRead), cancellationToken);
+                    if (read == 0) throw new EndOfStreamException("Connection closed during authentication");
+                    bytesRead += read;
+                }
+
+                var json = Encoding.UTF8.GetString(responseBuffer);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                var type = root.GetProperty("Type").GetString();
+                if (type != "AUTH_RESPONSE")
+                    throw new InvalidDataException($"Unexpected response type: {type}");
+
+                var success = root.GetProperty("Success").GetBoolean();
+                var message = root.TryGetProperty("Message", out var msgProp) ? msgProp.GetString() : null;
+
+                return (success, message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error receiving authentication response");
+                return (false, $"Authentication error: {ex.Message}");
+            }
         }
 
         private async Task ReceiveFrameLoop(CancellationToken cancellationToken)
         {
             if (_networkStream == null) return;
 
-            var buffer = new byte[64 * 1024]; // 64KB buffer
-            
             try
             {
                 while (!cancellationToken.IsCancellationRequested && _networkStream.CanRead)
@@ -236,19 +349,24 @@ namespace RemoteControl.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in frame receive loop");
-                ChangeState(Core.Enums.ConnectionState.Error, $"Frame receive error: {ex.Message}", ex);
+                ChangeState(ConnectionState.Error, $"Frame receive error: {ex.Message}", ex);
             }
         }
 
-        private static (string Host, int Port) ParseTargetId(string targetId)
+        private void ChangeState(ConnectionState newState, string? message = null, Exception? exception = null)
         {
-            // Support formats: "hostname:port", "ip:port", or just "AgentID" (defaults to port 7777)
-            if (string.IsNullOrWhiteSpace(targetId))
-                throw new ArgumentException("Target ID cannot be empty", nameof(targetId));
+            var oldState = _currentState;
+            _currentState = newState;
+            
+            ConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs(oldState, newState, message, exception));
+        }
 
-            // If it contains a colon, parse host:port
-            if (targetId.Contains(':'))
-            {
-                var parts = targetId.Split(':');
-                if (parts.Length != 2)
-                    throw new ArgumentException($"Invalid 
+        public void Dispose()
+        {
+            _receiveCancellation?.Cancel();
+            _receiveCancellation?.Dispose();
+            _networkStream?.Dispose();
+            _tcpClient?.Dispose();
+        }
+    }
+}

@@ -7,6 +7,7 @@ using RemoteControl.Services.Interfaces;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
@@ -16,6 +17,7 @@ namespace RemoteControl.Viewer.ViewModels
     {
         private readonly ITransportService _transportService;
         private readonly IUserSettingsService _userSettingsService;
+        private readonly IRegistryClientService? _registryClient;
         private readonly IMessenger _messenger;
 
         [ObservableProperty]
@@ -36,15 +38,24 @@ namespace RemoteControl.Viewer.ViewModels
         [ObservableProperty]
         private bool _hasError = false;
 
+        [ObservableProperty]
+        private bool _isLoggedIn = false;
+
+        [ObservableProperty]
+        private string _currentUser = string.Empty;
+
         public ObservableCollection<RecentConnection> RecentConnections { get; } = new();
+        public ObservableCollection<Device> AvailableDevices { get; } = new();
 
         public ConnectViewModel(
             ITransportService transportService, 
             IUserSettingsService userSettingsService,
+            IRegistryClientService? registryClient,
             IMessenger messenger)
         {
             _transportService = transportService;
             _userSettingsService = userSettingsService;
+            _registryClient = registryClient;
             _messenger = messenger;
 
             // Subscribe to connection state changes
@@ -182,6 +193,68 @@ namespace RemoteControl.Viewer.ViewModels
         partial void OnUserTokenChanged(string value)
         {
             ConnectCommand.NotifyCanExecuteChanged();
+        }
+
+        [RelayCommand]
+        private async Task LoadAvailableDevices()
+        {
+            if (_registryClient == null || !_registryClient.IsConnected)
+            {
+                StatusMessage = "Not connected to registry server";
+                return;
+            }
+
+            try
+            {
+                StatusMessage = "Loading available devices...";
+                var response = await _registryClient.GetAvailableDevicesAsync();
+                
+                if (response.Success)
+                {
+                    AvailableDevices.Clear();
+                    foreach (var device in response.Devices.Where(d => d.IsOnline))
+                    {
+                        AvailableDevices.Add(device);
+                    }
+                    StatusMessage = $"Found {AvailableDevices.Count} available devices";
+                }
+                else
+                {
+                    StatusMessage = response.Message ?? "Failed to load devices";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error loading devices: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        private void SelectDevice(Device device)
+        {
+            if (device != null)
+            {
+                TargetId = device.DeviceId;
+                StatusMessage = $"Selected device: {device.DeviceName} ({device.DeviceId})";
+            }
+        }
+
+        public void SetLoggedInUser(string userId, string username)
+        {
+            CurrentUser = username;
+            IsLoggedIn = true;
+            StatusMessage = $"Logged in as {username}";
+            
+            // Load available devices after login
+            _ = LoadAvailableDevices();
+        }
+
+        public void Logout()
+        {
+            IsLoggedIn = false;
+            CurrentUser = string.Empty;
+            AvailableDevices.Clear();
+            StatusMessage = "Logged out";
         }
 
         protected override void OnPropertyChanged(PropertyChangedEventArgs e)

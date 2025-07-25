@@ -1,8 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using RemoteControl.Core.Enums;
+using RemoteControl.Core.Events;
 using RemoteControl.Services.Interfaces;
 
 namespace RemoteControl.Agent.Services
@@ -10,165 +13,94 @@ namespace RemoteControl.Agent.Services
     public class AgentBackgroundService : BackgroundService
     {
         private readonly ILogger<AgentBackgroundService> _logger;
-        private readonly ITransportService _transportService;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ITcpServerService _tcpServerService;
         private readonly IScreenCaptureService _screenCaptureService;
-        private readonly IInputSimulationService _inputSimulationService;
-        private readonly IAgentService _agentService;
-        private bool _isRunning = false;
+        private readonly ITransportService _transportService;
 
-        public event EventHandler<string>? StatusChanged;
-        public event EventHandler<string>? ConnectionReceived;
         public event EventHandler<string>? ActivityLogged;
 
         public AgentBackgroundService(
             ILogger<AgentBackgroundService> logger,
-            ITransportService transportService,
+            IServiceProvider serviceProvider,
+            ITcpServerService tcpServerService,
             IScreenCaptureService screenCaptureService,
-            IInputSimulationService inputSimulationService,
-            IAgentService agentService)
+            ITransportService transportService)
         {
             _logger = logger;
-            _transportService = transportService;
+            _serviceProvider = serviceProvider;
+            _tcpServerService = tcpServerService;
             _screenCaptureService = screenCaptureService;
-            _inputSimulationService = inputSimulationService;
-            _agentService = agentService;
-        }
+            _transportService = transportService;
 
-        public async Task StartAsync(int port, int maxConnections, int frameRate, int imageQuality)
-        {
-            if (_isRunning)
-            {
-                throw new InvalidOperationException("Service is already running");
-            }
-
-            try
-            {
-                // Register agent
-                var agentInfo = await _agentService.GetLocalAgentInfoAsync();
-                await _agentService.RegisterAgentAsync(agentInfo);
-
-                // Start transport service
-                await _transportService.StartAsync(CancellationToken.None);
-
-                // Subscribe to events
-                _transportService.ConnectionStateChanged += OnConnectionStateChanged;
-                _transportService.FrameDataReceived += OnFrameDataReceived;
-
-                _isRunning = true;
-                StatusChanged?.Invoke(this, $"Service running on port {port}");
-                ActivityLogged?.Invoke(this, $"Service started - Port: {port}, Max connections: {maxConnections}");
-                
-                _logger.LogInformation("Agent service started on port {Port}", port);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to start agent service");
-                StatusChanged?.Invoke(this, "Failed to start service");
-                throw;
-            }
-        }
-
-        public async Task StopAsync()
-        {
-            if (!_isRunning) return;
-
-            try
-            {
-                // Stop screen capture if running
-                if (_screenCaptureService.IsCapturing)
-                {
-                    await _screenCaptureService.StopContinuousCaptureAsync();
-                }
-
-                // Stop transport service
-                await _transportService.StopAsync(CancellationToken.None);
-
-                // Unsubscribe from events
-                _transportService.ConnectionStateChanged -= OnConnectionStateChanged;
-                _transportService.FrameDataReceived -= OnFrameDataReceived;
-
-                _isRunning = false;
-                StatusChanged?.Invoke(this, "Service stopped");
-                ActivityLogged?.Invoke(this, "Service stopped");
-                
-                _logger.LogInformation("Agent service stopped");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error stopping agent service");
-                throw;
-            }
+            // Subscribe to events
+            _transportService.ConnectionStateChanged += OnConnectionStateChanged;
+            _transportService.FrameDataReceived += OnFrameDataReceived;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Agent background service started");
-            
             try
             {
+                _logger.LogInformation("Agent Background Service starting...");
+                ActivityLogged?.Invoke(this, "Agent service starting...");
+
+                // Start the TCP server to listen for connections
+                await _tcpServerService.StartAsync(stoppingToken);
+                
+                ActivityLogged?.Invoke(this, "Agent is ready and listening for connections");
+                _logger.LogInformation("Agent Background Service started successfully");
+
+                // Keep the service running
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    // Heartbeat and status monitoring
-                    if (_isRunning)
-                    {
-                        try
-                        {
-                            // Update agent status
-                            var agentInfo = await _agentService.GetLocalAgentInfoAsync();
-                            await _agentService.UpdateAgentStatusAsync(agentInfo.AgentId, true);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to update agent status");
-                        }
-                    }
-
-                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                    await Task.Delay(1000, stoppingToken);
                 }
             }
             catch (OperationCanceledException)
             {
-                // Expected when cancellation is requested
+                _logger.LogInformation("Agent Background Service cancelled");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in agent background service");
-            }
-            finally
-            {
-                if (_isRunning)
-                {
-                    await StopAsync();
-                }
+                _logger.LogError(ex, "Error in Agent Background Service");
+                ActivityLogged?.Invoke(this, $"Error: {ex.Message}");
+                throw;
             }
         }
 
-        private async void OnConnectionStateChanged(object? sender, Core.Events.ConnectionStateChangedEventArgs e)
+        private async void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
         {
             try
             {
-                var message = $"Connection state changed: {e.NewState}";
-                ActivityLogged?.Invoke(this, message);
-                
-                if (e.NewState == Core.Enums.ConnectionState.Connected)
+                var message = $"Connection state: {e.NewState}";
+                if (!string.IsNullOrEmpty(e.Message))
                 {
-                    ConnectionReceived?.Invoke(this, "New viewer connected");
-                    
-                    // Start screen capture when connected
+                    message += $" - {e.Message}";
+                }
+
+                _logger.LogInformation("Connection state changed from {OldState} to {NewState}: {Message}",
+                    e.OldState, e.NewState, e.Message);
+
+                ActivityLogged?.Invoke(this, message);
+
+                // Handle specific state changes
+                if (e.NewState == ConnectionState.Connected)
+                {
+                    // Start screen capture when a viewer connects
                     if (!_screenCaptureService.IsCapturing)
                     {
-                        await _screenCaptureService.StartContinuousCaptureAsync(
-                            frame => {
-                                // Send frame data to viewer
-                                // This would be implemented based on the transport protocol
-                                _logger.LogDebug("Captured frame {FrameNumber}", frame.FrameNumber);
-                            },
-                            frameRate: 30);
+                        await _screenCaptureService.StartContinuousCaptureAsync(frame =>
+                        {
+                            // Frame capture callback - this will be handled by the TCP server
+                            _logger.LogTrace("Screen frame captured: {Width}x{Height}, {DataSize} bytes",
+                                frame.Width, frame.Height, frame.ImageData.Length);
+                        }, 30);
                         
                         ActivityLogged?.Invoke(this, "Screen capture started");
                     }
                 }
-                else if (e.NewState == Core.Enums.ConnectionState.Disconnected)
+                else if (e.NewState == ConnectionState.Disconnected)
                 {
                     // Stop screen capture when disconnected
                     if (_screenCaptureService.IsCapturing)
@@ -204,8 +136,13 @@ namespace RemoteControl.Agent.Services
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            await StopAsync();
+            _logger.LogInformation("Agent Background Service stopping...");
+            ActivityLogged?.Invoke(this, "Agent service stopping...");
+            
+            await _tcpServerService.StopAsync(cancellationToken);
             await base.StopAsync(cancellationToken);
+            
+            _logger.LogInformation("Agent Background Service stopped");
         }
     }
 }

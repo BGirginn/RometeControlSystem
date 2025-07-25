@@ -58,8 +58,6 @@ public partial class MainWindow : Window
             ScreenResolutionText.Text = $"{_agentInfo.ScreenWidth} x {_agentInfo.ScreenHeight}";
             
             // Subscribe to events
-            _backgroundService.StatusChanged += OnServiceStatusChanged;
-            _backgroundService.ConnectionReceived += OnConnectionReceived;
             _backgroundService.ActivityLogged += OnActivityLogged;
             
             StatusText.Text = "Ready - Service stopped";
@@ -121,7 +119,7 @@ public partial class MainWindow : Window
             var frameRate = (int)FrameRateSlider.Value;
             var imageQuality = (int)ImageQualitySlider.Value;
             
-            await _backgroundService.StartAsync(port, maxConnections, frameRate, imageQuality);
+            await _backgroundService.StartAsync(CancellationToken.None);
             
             AddActivityLog($"Service started on port {port}");
         }
@@ -144,7 +142,7 @@ public partial class MainWindow : Window
             
             StopServiceButton.IsEnabled = false;
             
-            await _backgroundService.StopAsync();
+            await _backgroundService.StopAsync(CancellationToken.None);
             
             AddActivityLog("Service stopped");
         }
@@ -207,7 +205,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                await _backgroundService.StopAsync();
+                await _backgroundService.StopAsync(CancellationToken.None);
                 await _host.StopAsync();
             }
             catch (Exception ex)
@@ -221,6 +219,8 @@ public partial class MainWindow : Window
         });
     }
 
+    // Commented out - events no longer exist in AgentBackgroundService
+    /*
     private void OnServiceStatusChanged(object? sender, string status)
     {
         Dispatcher.Invoke(() =>
@@ -257,6 +257,7 @@ public partial class MainWindow : Window
             LastConnectionText.Text = $"Last connection: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
         });
     }
+    */
 
     private void OnActivityLogged(object? sender, string activity)
     {

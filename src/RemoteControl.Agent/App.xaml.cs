@@ -65,6 +65,7 @@ public partial class App : Application
         // Register Core Services
         services.AddSingleton<ITransportService, TcpTransportService>();
         services.AddSingleton<IAgentService, LocalAgentService>();
+        services.AddSingleton<ISessionService, SessionService>();
         services.AddSingleton<IScreenCaptureService, WindowsScreenCaptureService>();
         services.AddSingleton<IInputSimulationService, WindowsInputSimulationService>();
         services.AddSingleton<IUserSettingsService, FileUserSettingsService>();
