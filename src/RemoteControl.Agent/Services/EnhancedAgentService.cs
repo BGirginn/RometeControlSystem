@@ -34,12 +34,10 @@ public class EnhancedAgentService : BackgroundService
     private readonly Dictionary<string, ActiveSession> _activeSessions = new();
     
     // Screen capture components
-    private Bitmap? _lastFrame;
     private readonly object _frameLock = new object();
     private volatile bool _isStreaming = false;
     
     public event EventHandler<string>? ActivityLogged;
-    public event EventHandler<RequestSessionMessage>? SessionRequested;
     public event EventHandler<bool>? ConnectionStateChanged;
     
     public bool IsConnected => _signalRClient.IsConnected;
@@ -661,7 +659,7 @@ public class EnhancedAgentService : BackgroundService
         
         lock (_frameLock)
         {
-            _lastFrame?.Dispose();
+            // Frame cleanup handled in StreamFrameToActiveSessions method
         }
         
         await Task.CompletedTask;

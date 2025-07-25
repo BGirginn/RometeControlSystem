@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using RemoteControl.ControlServer.Hubs;
 using RemoteControl.ControlServer.Services;
 using RemoteControl.Transport.Extensions;
+using RemoteControl.Core.Data.Extensions;
 using Serilog;
 using System.Text;
 
@@ -16,6 +17,9 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog();
+
+// Add database services
+builder.Services.AddDatabase(builder.Configuration);
 
 // Add services
 builder.Services.AddControllers();
@@ -147,6 +151,9 @@ app.MapGet("/api/agents", async (IAgentService agentService) =>
     var agents = await agentService.GetOnlineAgentsAsync();
     return Results.Ok(agents);
 }).RequireAuthorization();
+
+// Migrate and seed database
+await app.Services.MigrateDatabaseAsync();
 
 Log.Information("Starting Remote Control Server on {Urls}", string.Join(", ", app.Urls));
 
