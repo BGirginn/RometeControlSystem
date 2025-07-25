@@ -23,8 +23,9 @@ namespace RemoteControl.Viewer.Views
             // Handle keyboard input for remote control
             if (DataContext is ViewModels.StreamingViewModel viewModel && viewModel.InputEnabled)
             {
-                // TODO: Send keyboard input to remote computer via transport service
-                // This would be implemented with the actual transport service
+                // Send keyboard input to remote computer via transport service
+                var virtualKey = KeyInterop.VirtualKeyFromKey(e.Key);
+                _ = viewModel.SendKeyDownAsync(virtualKey);
                 
                 // Handle special keys
                 switch (e.Key)
@@ -49,19 +50,19 @@ namespace RemoteControl.Viewer.Views
             // Handle mouse movement for remote control
             if (DataContext is ViewModels.StreamingViewModel viewModel && viewModel.InputEnabled)
             {
-                // TODO: Send mouse movement to remote computer via transport service
-                var position = e.GetPosition(RemoteScreenImage);
+                // Send mouse movement to remote computer via transport service
+                var position = e.GetPosition(this);
                 
                 // Calculate relative position (0-1) for transmission
-                var relativeX = position.X / RemoteScreenImage.ActualWidth;
-                var relativeY = position.Y / RemoteScreenImage.ActualHeight;
+                var relativeX = position.X / this.ActualWidth;
+                var relativeY = position.Y / this.ActualHeight;
                 
                 // Ensure coordinates are within bounds
                 relativeX = Math.Max(0, Math.Min(1, relativeX));
                 relativeY = Math.Max(0, Math.Min(1, relativeY));
                 
-                // TODO: Send via transport service
-                // await _transportService.SendMouseMoveAsync(relativeX, relativeY);
+                // Send via transport service
+                _ = viewModel.SendMouseMoveAsync(relativeX, relativeY);
             }
         }
 
@@ -70,7 +71,7 @@ namespace RemoteControl.Viewer.Views
             // Handle mouse clicks for remote control
             if (DataContext is ViewModels.StreamingViewModel viewModel && viewModel.InputEnabled)
             {
-                // TODO: Send mouse button down to remote computer
+                // Send mouse button down to remote computer
                 var button = e.ChangedButton switch
                 {
                     MouseButton.Left => "Left",
@@ -79,8 +80,8 @@ namespace RemoteControl.Viewer.Views
                     _ => "Unknown"
                 };
                 
-                // TODO: Send via transport service
-                // await _transportService.SendMouseDownAsync(button);
+                // Send via transport service
+                _ = viewModel.SendMouseDownAsync(button);
                 
                 // Handle double-click for fullscreen toggle
                 if (e.ClickCount == 2 && e.ChangedButton == MouseButton.Left)
@@ -98,7 +99,7 @@ namespace RemoteControl.Viewer.Views
             // Handle mouse button release for remote control
             if (DataContext is ViewModels.StreamingViewModel viewModel && viewModel.InputEnabled)
             {
-                // TODO: Send mouse button up to remote computer
+                // Send mouse button up to remote computer
                 var button = e.ChangedButton switch
                 {
                     MouseButton.Left => "Left",
@@ -107,8 +108,8 @@ namespace RemoteControl.Viewer.Views
                     _ => "Unknown"
                 };
                 
-                // TODO: Send via transport service
-                // await _transportService.SendMouseUpAsync(button);
+                // Send via transport service
+                _ = viewModel.SendMouseUpAsync(button);
             }
         }
 
@@ -119,11 +120,11 @@ namespace RemoteControl.Viewer.Views
             // Handle mouse wheel for remote control
             if (DataContext is ViewModels.StreamingViewModel viewModel && viewModel.InputEnabled)
             {
-                // TODO: Send mouse wheel delta to remote computer
+                // Send mouse wheel delta to remote computer
                 var delta = e.Delta;
                 
-                // TODO: Send via transport service
-                // await _transportService.SendMouseWheelAsync(delta);
+                // Send via transport service
+                _ = viewModel.SendMouseWheelAsync(delta);
             }
         }
 

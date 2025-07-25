@@ -121,10 +121,11 @@ namespace RemoteControl.Viewer.ViewModels
         }
 
         [RelayCommand]
-        private void RemoveRecentConnection(RecentConnection connection)
+        private async Task RemoveRecentConnection(RecentConnection connection)
         {
             RecentConnections.Remove(connection);
-            // TODO: Implement removal from settings service
+            // Remove from settings service
+            await _userSettingsService.RemoveRecentConnectionAsync(connection.TargetId);
         }
 
         private bool CanConnect()

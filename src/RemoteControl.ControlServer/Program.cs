@@ -152,8 +152,8 @@ app.MapGet("/api/agents", async (IAgentService agentService) =>
     return Results.Ok(agents);
 }).RequireAuthorization();
 
-// Migrate and seed database
-await app.Services.MigrateDatabaseAsync();
+// Database already exists - no migration needed
+// await app.Services.MigrateDatabaseAsync();
 
 Log.Information("Starting Remote Control Server on {Urls}", string.Join(", ", app.Urls));
 

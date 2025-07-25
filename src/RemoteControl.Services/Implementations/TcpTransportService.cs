@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using RemoteControl.Core.Enums;
 using RemoteControl.Core.Events;
 using RemoteControl.Core.Models;
+using RemoteControl.Protocol.Messages;
 using RemoteControl.Services.Interfaces;
 
 namespace RemoteControl.Services.Implementations
@@ -351,6 +352,164 @@ namespace RemoteControl.Services.Implementations
                 _logger.LogError(ex, "Error in frame receive loop");
                 ChangeState(ConnectionState.Error, $"Frame receive error: {ex.Message}", ex);
             }
+        }
+
+        public async Task SendInputEventAsync(InputEventMessage inputEvent, CancellationToken cancellationToken = default)
+        {
+            if (_networkStream == null || !_tcpClient?.Connected == true)
+                throw new InvalidOperationException("Not connected to remote agent");
+
+            try
+            {
+                var json = JsonSerializer.Serialize(inputEvent);
+                var data = Encoding.UTF8.GetBytes(json);
+                var lengthData = BitConverter.GetBytes(data.Length);
+
+                await _networkStream.WriteAsync(lengthData, cancellationToken);
+                await _networkStream.WriteAsync(data, cancellationToken);
+                await _networkStream.FlushAsync(cancellationToken);
+
+                _logger.LogTrace("Sent input event: {Type}", inputEvent.Type);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending input event");
+                ChangeState(ConnectionState.Error, $"Input send error: {ex.Message}", ex);
+                throw;
+            }
+        }
+
+        public async Task SendMouseMoveAsync(string sessionId, double relativeX, double relativeY, CancellationToken cancellationToken = default)
+        {
+            var inputEvent = new InputEventMessage
+            {
+                Payload = new InputEventPayload
+                {
+                    SessionId = sessionId,
+                    Events = new[]
+                    {
+                        new Protocol.Messages.InputEvent
+                        {
+                            Type = Protocol.Messages.InputEventType.MouseMove,
+                            X = (int)(relativeX * 65535), // Convert to Win32 coordinate space
+                            Y = (int)(relativeY * 65535),
+                            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        }
+                    }
+                }
+            };
+
+            await SendInputEventAsync(inputEvent, cancellationToken);
+        }
+
+        public async Task SendMouseDownAsync(string sessionId, string button, CancellationToken cancellationToken = default)
+        {
+            var inputEvent = new InputEventMessage
+            {
+                Payload = new InputEventPayload
+                {
+                    SessionId = sessionId,
+                    Events = new[]
+                    {
+                        new Protocol.Messages.InputEvent
+                        {
+                            Type = Protocol.Messages.InputEventType.MouseDown,
+                            Button = button,
+                            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        }
+                    }
+                }
+            };
+
+            await SendInputEventAsync(inputEvent, cancellationToken);
+        }
+
+        public async Task SendMouseUpAsync(string sessionId, string button, CancellationToken cancellationToken = default)
+        {
+            var inputEvent = new InputEventMessage
+            {
+                Payload = new InputEventPayload
+                {
+                    SessionId = sessionId,
+                    Events = new[]
+                    {
+                        new Protocol.Messages.InputEvent
+                        {
+                            Type = Protocol.Messages.InputEventType.MouseUp,
+                            Button = button,
+                            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        }
+                    }
+                }
+            };
+
+            await SendInputEventAsync(inputEvent, cancellationToken);
+        }
+
+        public async Task SendMouseWheelAsync(string sessionId, int delta, CancellationToken cancellationToken = default)
+        {
+            var inputEvent = new InputEventMessage
+            {
+                Payload = new InputEventPayload
+                {
+                    SessionId = sessionId,
+                    Events = new[]
+                    {
+                        new Protocol.Messages.InputEvent
+                        {
+                            Type = Protocol.Messages.InputEventType.MouseWheel,
+                            Delta = delta,
+                            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        }
+                    }
+                }
+            };
+
+            await SendInputEventAsync(inputEvent, cancellationToken);
+        }
+
+        public async Task SendKeyDownAsync(string sessionId, int virtualKey, CancellationToken cancellationToken = default)
+        {
+            var inputEvent = new InputEventMessage
+            {
+                Payload = new InputEventPayload
+                {
+                    SessionId = sessionId,
+                    Events = new[]
+                    {
+                        new Protocol.Messages.InputEvent
+                        {
+                            Type = Protocol.Messages.InputEventType.KeyDown,
+                            VirtualKey = virtualKey,
+                            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        }
+                    }
+                }
+            };
+
+            await SendInputEventAsync(inputEvent, cancellationToken);
+        }
+
+        public async Task SendKeyUpAsync(string sessionId, int virtualKey, CancellationToken cancellationToken = default)
+        {
+            var inputEvent = new InputEventMessage
+            {
+                Payload = new InputEventPayload
+                {
+                    SessionId = sessionId,
+                    Events = new[]
+                    {
+                        new Protocol.Messages.InputEvent
+                        {
+                            Type = Protocol.Messages.InputEventType.KeyUp,
+                            VirtualKey = virtualKey,
+                            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        }
+                    }
+                }
+            };
+
+            await SendInputEventAsync(inputEvent, cancellationToken);
         }
 
         private void ChangeState(ConnectionState newState, string? message = null, Exception? exception = null)

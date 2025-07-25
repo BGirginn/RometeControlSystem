@@ -11,6 +11,7 @@ namespace RemoteControl.Services.Interfaces
         Task SaveUserTokenAsync(string token);
         Task AddRecentConnectionAsync(string targetId);
         Task<IEnumerable<RecentConnection>> GetRecentConnectionsAsync();
+        Task RemoveRecentConnectionAsync(string targetId);
         Task<string> GetThemeAsync();
         Task SetThemeAsync(string theme);
     }

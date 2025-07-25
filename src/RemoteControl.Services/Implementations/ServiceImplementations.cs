@@ -12,6 +12,7 @@ using System.Windows.Media.Imaging;
 using Microsoft.Extensions.Logging;
 using RemoteControl.Core.Events;
 using RemoteControl.Core.Models;
+using RemoteControl.Protocol.Messages;
 using RemoteControl.Services.Interfaces;
 
 namespace RemoteControl.Services.Implementations
@@ -127,6 +128,48 @@ namespace RemoteControl.Services.Implementations
             }
         }
 
+        public async Task SendInputEventAsync(InputEventMessage inputEvent, CancellationToken cancellationToken = default)
+        {
+            // Mock implementation - just log the input event
+            await Task.CompletedTask;
+        }
+
+        public async Task SendMouseMoveAsync(string sessionId, double relativeX, double relativeY, CancellationToken cancellationToken = default)
+        {
+            // Mock implementation - just log the mouse move
+            await Task.CompletedTask;
+        }
+
+        public async Task SendMouseDownAsync(string sessionId, string button, CancellationToken cancellationToken = default)
+        {
+            // Mock implementation - just log the mouse down
+            await Task.CompletedTask;
+        }
+
+        public async Task SendMouseUpAsync(string sessionId, string button, CancellationToken cancellationToken = default)
+        {
+            // Mock implementation - just log the mouse up
+            await Task.CompletedTask;
+        }
+
+        public async Task SendMouseWheelAsync(string sessionId, int delta, CancellationToken cancellationToken = default)
+        {
+            // Mock implementation - just log the mouse wheel
+            await Task.CompletedTask;
+        }
+
+        public async Task SendKeyDownAsync(string sessionId, int virtualKey, CancellationToken cancellationToken = default)
+        {
+            // Mock implementation - just log the key down
+            await Task.CompletedTask;
+        }
+
+        public async Task SendKeyUpAsync(string sessionId, int virtualKey, CancellationToken cancellationToken = default)
+        {
+            // Mock implementation - just log the key up
+            await Task.CompletedTask;
+        }
+
         private void OnConnectionStateChanged(Core.Enums.ConnectionState oldState, Core.Enums.ConnectionState newState, string? message = null)
         {
             ConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs(oldState, newState, message));
@@ -204,6 +247,18 @@ namespace RemoteControl.Services.Implementations
         {
             var connections = _settings?.RecentConnections ?? new List<RecentConnection>();
             return Task.FromResult<IEnumerable<RecentConnection>>(connections);
+        }
+
+        public async Task RemoveRecentConnectionAsync(string targetId)
+        {
+            if (_settings?.RecentConnections == null) return;
+
+            var existing = _settings.RecentConnections.FirstOrDefault(rc => rc.TargetId == targetId);
+            if (existing != null)
+            {
+                _settings.RecentConnections.Remove(existing);
+                await SaveSettingsAsync();
+            }
         }
 
         public Task<string> GetThemeAsync()

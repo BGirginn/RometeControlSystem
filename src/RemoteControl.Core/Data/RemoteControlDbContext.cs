@@ -17,7 +17,8 @@ public class RemoteControlDbContext : DbContext
     public DbSet<DeviceEntity> Devices { get; set; }
     public DbSet<SessionLogEntity> SessionLogs { get; set; }
     public DbSet<ConnectionPermissionEntity> ConnectionPermissions { get; set; }
-    public DbSet<AuditLogEntity> AuditLogs { get; set; }
+    // TODO: Re-enable AuditLogs after fixing cascade delete conflicts
+    // public DbSet<AuditLogEntity> AuditLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,7 +43,7 @@ public class RemoteControlDbContext : DbContext
             entity.HasMany(e => e.ReceivedPermissions)
                   .WithOne(e => e.Grantee)
                   .HasForeignKey(e => e.GranteeId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                  .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasMany(e => e.ViewerSessions)
                   .WithOne(e => e.Viewer)
@@ -54,10 +55,11 @@ public class RemoteControlDbContext : DbContext
                   .HasForeignKey(e => e.AgentId)
                   .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasMany(e => e.AuditLogs)
-                  .WithOne(e => e.User)
-                  .HasForeignKey(e => e.UserId)
-                  .OnDelete(DeleteBehavior.SetNull);
+            // Remove AuditLogs navigation property to avoid cascade conflicts
+            // entity.HasMany(e => e.AuditLogs)
+            //       .WithOne(e => e.User)
+            //       .HasForeignKey(e => e.UserId)
+            //       .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Configure Device entity
@@ -105,7 +107,7 @@ public class RemoteControlDbContext : DbContext
             entity.HasOne(e => e.Grantee)
                   .WithMany(e => e.ReceivedPermissions)
                   .HasForeignKey(e => e.GranteeId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                  .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Device)
                   .WithMany()
@@ -113,13 +115,14 @@ public class RemoteControlDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Configure AuditLog entity
+        // Configure AuditLog entity - TEMPORARILY DISABLED
+        /*
         modelBuilder.Entity<AuditLogEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
             
             entity.HasOne(e => e.User)
-                  .WithMany(e => e.AuditLogs)
+                  .WithMany()
                   .HasForeignKey(e => e.UserId)
                   .OnDelete(DeleteBehavior.SetNull);
 
@@ -133,6 +136,7 @@ public class RemoteControlDbContext : DbContext
                   .HasForeignKey(e => e.SessionId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
+        */
 
         // Seed initial data
         SeedData(modelBuilder);

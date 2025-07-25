@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using System.Windows.Media.Imaging;
@@ -62,6 +63,9 @@ namespace RemoteControl.Viewer.ViewModels
 
         [ObservableProperty]
         private string _metricsText = string.Empty;
+
+        // Session information
+        public string SessionId { get; private set; } = Guid.NewGuid().ToString();
 
         public StreamingViewModel(
             ITransportService transportService,
@@ -139,6 +143,97 @@ namespace RemoteControl.Viewer.ViewModels
         private void ShowSettings()
         {
             // TODO: Show settings dialog or navigate to settings view
+        }
+
+        // Input handling methods
+        public async Task SendMouseMoveAsync(double relativeX, double relativeY)
+        {
+            if (!InputEnabled || !IsConnected) 
+                return;
+            
+            try
+            {
+                await _transportService.SendMouseMoveAsync(SessionId, relativeX, relativeY);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Mouse move error: {ex.Message}");
+            }
+        }
+
+        public async Task SendMouseDownAsync(string button)
+        {
+            if (!InputEnabled || !IsConnected) 
+                return;
+            
+            try
+            {
+                await _transportService.SendMouseDownAsync(SessionId, button);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Mouse down error: {ex.Message}");
+            }
+        }
+
+        public async Task SendMouseUpAsync(string button)
+        {
+            if (!InputEnabled || !IsConnected) 
+                return;
+            
+            try
+            {
+                await _transportService.SendMouseUpAsync(SessionId, button);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Mouse up error: {ex.Message}");
+            }
+        }
+
+        public async Task SendMouseWheelAsync(int delta)
+        {
+            if (!InputEnabled || !IsConnected) 
+                return;
+            
+            try
+            {
+                await _transportService.SendMouseWheelAsync(SessionId, delta);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Mouse wheel error: {ex.Message}");
+            }
+        }
+
+        public async Task SendKeyDownAsync(int virtualKey)
+        {
+            if (!InputEnabled || !IsConnected) 
+                return;
+            
+            try
+            {
+                await _transportService.SendKeyDownAsync(SessionId, virtualKey);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Key down error: {ex.Message}");
+            }
+        }
+
+        public async Task SendKeyUpAsync(int virtualKey)
+        {
+            if (!InputEnabled || !IsConnected) 
+                return;
+            
+            try
+            {
+                await _transportService.SendKeyUpAsync(SessionId, virtualKey);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Key up error: {ex.Message}");
+            }
         }
 
         private async void OnFrameDataReceived(object? sender, byte[] frameData)
