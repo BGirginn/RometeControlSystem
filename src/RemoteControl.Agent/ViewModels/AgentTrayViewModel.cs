@@ -78,7 +78,7 @@ namespace RemoteControl.Agent.ViewModels
         [RelayCommand]
         private void ExitApplication()
         {
-            Application.Current.Shutdown();
+            System.Windows.Application.Current.Shutdown();
         }
 
         public void HandleIncomingConnection(ConnectionRequest request)

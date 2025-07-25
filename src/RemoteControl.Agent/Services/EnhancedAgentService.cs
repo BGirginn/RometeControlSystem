@@ -29,8 +29,8 @@ public class EnhancedAgentService : BackgroundService
     
     private string? _agentId;
     private string? _authToken;
-    private Timer? _heartbeatTimer;
-    private Timer? _frameStreamTimer;
+    private System.Threading.Timer? _heartbeatTimer;
+    private System.Threading.Timer? _frameStreamTimer;
     private readonly Dictionary<string, ActiveSession> _activeSessions = new();
     
     // Screen capture components
@@ -205,11 +205,11 @@ public class EnhancedAgentService : BackgroundService
     private async Task StartTimersAsync()
     {
         // Heartbeat every 30 seconds
-        _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+        _heartbeatTimer = new System.Threading.Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
         
         // Frame streaming at target FPS (only when sessions are active)
         var frameInterval = TimeSpan.FromMilliseconds(1000.0 / _agentOptions.Value.MaxFps);
-        _frameStreamTimer = new Timer(StreamFrameToActiveSessions, null, frameInterval, frameInterval);
+        _frameStreamTimer = new System.Threading.Timer(StreamFrameToActiveSessions, null, frameInterval, frameInterval);
         
         _logger.LogInformation("Timers started - Heartbeat: 30s, Frame streaming: {Fps} FPS", 
             _agentOptions.Value.MaxFps);
@@ -275,7 +275,7 @@ public class EnhancedAgentService : BackgroundService
             $"🔔 Session request from {viewerDisplayName} ({viewerMachine})");
 
         // Show user approval dialog on UI thread with existing ViewModel pattern
-        var approved = await Application.Current.Dispatcher.InvokeAsync(() =>
+        var approved = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
             // Create a simplified ViewModel for the approval dialog
             // In production, this would use the full AgentTrayViewModel

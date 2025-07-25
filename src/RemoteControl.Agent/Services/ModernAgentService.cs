@@ -23,7 +23,7 @@ public class ModernAgentService : BackgroundService
     
     private string? _agentId;
     private string? _authToken;
-    private Timer? _heartbeatTimer;
+    private System.Threading.Timer? _heartbeatTimer;
     
     public event EventHandler<string>? ActivityLogged;
     public event EventHandler<RequestSessionMessage>? SessionRequested;
@@ -60,7 +60,7 @@ public class ModernAgentService : BackgroundService
             await ConnectToControlServerAsync(stoppingToken);
 
             // Start heartbeat timer
-            _heartbeatTimer = new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+            _heartbeatTimer = new System.Threading.Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
             
             // Keep service running
             while (!stoppingToken.IsCancellationRequested)

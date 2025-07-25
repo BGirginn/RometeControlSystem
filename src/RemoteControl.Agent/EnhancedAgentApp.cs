@@ -8,6 +8,7 @@ using RemoteControl.Agent.Services;
 using RemoteControl.Transport.Interfaces;
 using RemoteControl.Transport.Implementations;
 using RemoteControl.Transport.Configuration;
+using WpfApplication = System.Windows.Application;
 using System.Windows;
 
 namespace RemoteControl.Agent;
@@ -21,7 +22,7 @@ namespace RemoteControl.Agent;
 /// - User approval workflow
 /// - Performance monitoring
 /// </summary>
-public partial class EnhancedAgentApp : Application
+public partial class EnhancedAgentApp : WpfApplication
 {
     private IHost? _host;
     private ILogger<EnhancedAgentApp>? _logger;
@@ -52,8 +53,8 @@ public partial class EnhancedAgentApp : Application
             var logger = _host?.Services.GetService<ILogger<EnhancedAgentApp>>();
             logger?.LogError(ex, "❌ Failed to start Enhanced Agent");
             
-            MessageBox.Show($"Failed to start Enhanced Remote Control Agent:\n\n{ex.Message}", 
-                "Agent Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Failed to start Enhanced Remote Control Agent:\n\n{ex.Message}", 
+                "Agent Startup Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             
             Shutdown(1);
         }

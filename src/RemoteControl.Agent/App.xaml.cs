@@ -9,13 +9,14 @@ using Microsoft.Extensions.Logging;
 using RemoteControl.Agent.Services;
 using RemoteControl.Transport.Extensions;
 using Serilog;
+using WpfApplication = System.Windows.Application;
 
 namespace RemoteControl.Agent;
 
 /// <summary>
 /// Interaction logic for App.xaml
 /// </summary>
-public partial class App : Application
+public partial class App : WpfApplication
 {
     private IHost? _host;
 
@@ -52,7 +53,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Agent application failed to start: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Agent application failed to start: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             Shutdown(1);
         }
     }
