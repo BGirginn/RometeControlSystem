@@ -66,7 +66,7 @@ namespace RemoteControl.Viewer.ViewModels
         }
 
         [RelayCommand(CanExecute = nameof(CanConnect))]
-        private void Connect()
+        private async Task Connect()
         {
             try
             {
@@ -84,11 +84,11 @@ namespace RemoteControl.Viewer.ViewModels
                     RequestTime = DateTime.UtcNow
                 };
 
-                _transportService.ConnectAsync(request);
+                await _transportService.ConnectAsync(request);
                 
                 // Save token and add to recent connections
-                _userSettingsService.SaveUserTokenAsync(UserToken);
-                _userSettingsService.AddRecentConnectionAsync(TargetId);
+                await _userSettingsService.SaveUserTokenAsync(UserToken);
+                await _userSettingsService.AddRecentConnectionAsync(TargetId);
                 
                 // Navigate to streaming view
                 _messenger.Send(new NavigationMessage("Streaming"));
