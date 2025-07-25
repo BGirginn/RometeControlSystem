@@ -1,0 +1,24 @@
+﻿<Application x:Class="RemoteControl.Viewer.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:RemoteControl.Viewer">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Load theme resources -->
+                <ResourceDictionary Source="Themes/Theme.xaml"/>
+                <!-- Converters -->
+                <ResourceDictionary>
+                    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+                    <local:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+                    <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+                    <local:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+                    <local:BoolToInputTooltipConverter x:Key="BoolToInputTooltipConverter"/>
+                    <local:BoolToInputBackgroundConverter x:Key="BoolToInputBackgroundConverter"/>
+                    <local:BoolToWindowStateConverter x:Key="BoolToWindowStateConverter"/>
+                    <local:BoolToWindowStyleConverter x:Key="BoolToWindowStyleConverter"/>
+                </ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

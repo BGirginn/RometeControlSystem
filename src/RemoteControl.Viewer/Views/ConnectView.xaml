@@ -1,0 +1,201 @@
+<UserControl x:Class="RemoteControl.Viewer.Views.ConnectView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="800">
+    
+    <UserControl.Resources>
+        <!-- Connection Status Template -->
+        <DataTemplate x:Key="StatusTemplate">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Ellipse x:Name="StatusIndicator" Width="8" Height="8" Margin="0,0,8,0"/>
+                <TextBlock Text="{Binding}" Style="{StaticResource CaptionText}"/>
+            </StackPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=DataContext.HasError}" Value="True">
+                    <Setter TargetName="StatusIndicator" Property="Fill" Value="{StaticResource ErrorBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=DataContext.IsConnecting}" Value="True">
+                    <Setter TargetName="StatusIndicator" Property="Fill" Value="{StaticResource WarningBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=DataContext.HasError}" Value="False">
+                    <DataTrigger.Setters>
+                        <Setter TargetName="StatusIndicator" Property="Fill" Value="{StaticResource SuccessBrush}"/>
+                    </DataTrigger.Setters>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" 
+                BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="{StaticResource LargePadding}">
+                <TextBlock Text="Connect to Remote Computer" 
+                          Style="{StaticResource HeadlineText}"
+                          HorizontalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" 
+                      Padding="{StaticResource LargePadding}">
+            <StackPanel MaxWidth="500" HorizontalAlignment="Center">
+                
+                <!-- Connection Form -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Connection Details" 
+                                  Style="{StaticResource TitleText}" 
+                                  Margin="0,0,0,16"/>
+                        
+                        <!-- Target ID Input -->
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="Target ID" 
+                                      Style="{StaticResource BodyText}" 
+                                      Margin="0,0,0,4"/>
+                            <TextBox x:Name="TargetIdTextBox"
+                                    Text="{Binding TargetId, UpdateSourceTrigger=PropertyChanged}"
+                                    Style="{StaticResource PrimaryTextBox}"
+                                    IsEnabled="{Binding IsConnecting, Converter={StaticResource InverseBooleanConverter}}"
+                                    AutomationProperties.Name="Target ID"
+                                    AutomationProperties.HelpText="Enter the ID of the computer you want to connect to"/>
+                        </StackPanel>
+                        
+                        <!-- User Token Input -->
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="User Token" 
+                                      Style="{StaticResource BodyText}" 
+                                      Margin="0,0,0,4"/>
+                            <PasswordBox x:Name="UserTokenBox"
+                                        Style="{StaticResource PrimaryPasswordBox}"
+                                        IsEnabled="{Binding IsConnecting, Converter={StaticResource InverseBooleanConverter}}"
+                                        AutomationProperties.Name="User Token"
+                                        AutomationProperties.HelpText="Enter your authentication token"/>
+                        </StackPanel>
+                        
+                        <!-- Connection Buttons -->
+                        <StackPanel Orientation="Horizontal" 
+                                   HorizontalAlignment="Right">
+                            <Button Content="Cancel" 
+                                   Style="{StaticResource SecondaryButton}"
+                                   Command="{Binding CancelConnectionCommand}"
+                                   Visibility="{Binding IsConnecting, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                   Margin="0,0,8,0"
+                                   AutomationProperties.Name="Cancel Connection"/>
+                            
+                            <Button Content="Connect" 
+                                   Style="{StaticResource PrimaryButton}"
+                                   Command="{Binding ConnectCommand}"
+                                   IsDefault="True"
+                                   AutomationProperties.Name="Connect to Remote Computer"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Connection Status -->
+                <Border Style="{StaticResource Card}" 
+                        Background="{StaticResource SurfaceBrush}">
+                    <StackPanel>
+                        <ContentPresenter Content="{Binding StatusMessage}"
+                                         ContentTemplate="{StaticResource StatusTemplate}"
+                                         HorizontalAlignment="Center"/>
+                        
+                        <!-- Error Message -->
+                        <TextBlock Text="{Binding ConnectionError}"
+                                  Style="{StaticResource BodyText}"
+                                  Foreground="{StaticResource ErrorBrush}"
+                                  TextWrapping="Wrap"
+                                  HorizontalAlignment="Center"
+                                  Margin="0,8,0,0"
+                                  Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        
+                        <!-- Loading Animation -->
+                        <ProgressBar IsIndeterminate="{Binding IsConnecting}"
+                                    Height="4"
+                                    Margin="0,8,0,0"
+                                    Visibility="{Binding IsConnecting, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Recent Connections -->
+                <Border Style="{StaticResource Card}" 
+                        Visibility="{Binding RecentConnections.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="Recent Connections" 
+                                  Style="{StaticResource TitleText}" 
+                                  Margin="0,0,0,16"/>
+                        
+                        <ListView ItemsSource="{Binding RecentConnections}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource SurfaceBrush}"
+                                           CornerRadius="{StaticResource MediumRadius}"
+                                           Padding="{StaticResource MediumPadding}"
+                                           Margin="0,2">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding DisplayName}" 
+                                                          Style="{StaticResource BodyText}"
+                                                          FontWeight="Medium"/>
+                                                <TextBlock Text="{Binding TargetId}" 
+                                                          Style="{StaticResource CaptionText}"/>
+                                                <TextBlock Text="{Binding LastConnected, StringFormat='Last connected: {0:g}'}" 
+                                                          Style="{StaticResource CaptionText}"/>
+                                            </StackPanel>
+                                            
+                                            <Button Grid.Column="1" 
+                                                   Content="Connect" 
+                                                   Style="{StaticResource PrimaryButton}"
+                                                   Command="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=DataContext.ConnectToRecentCommand}"
+                                                   CommandParameter="{Binding}"
+                                                   Margin="8,0"/>
+                                            
+                                            <Button Grid.Column="2" 
+                                                   Content="✕" 
+                                                   Style="{StaticResource SecondaryButton}"
+                                                   Command="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=DataContext.RemoveRecentConnectionCommand}"
+                                                   CommandParameter="{Binding}"
+                                                   Width="32" Height="32"
+                                                   AutomationProperties.Name="Remove from recent connections"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" 
+                BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0"
+                Padding="{StaticResource MediumPadding}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="Remote Control Viewer v1.0" 
+                          Style="{StaticResource CaptionText}"/>
+                <Rectangle Width="1" Height="12" Fill="{StaticResource DividerBrush}" Margin="8,0"/>
+                <TextBlock Text="Ready" Style="{StaticResource CaptionText}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
